@@ -15,9 +15,11 @@ class App extends Component {
     super(poops)
     this.state = {
       show: false,
-      x: null,
-      y: null,
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
       perspective: 500,
+      x_ang: 0,
+      y_ang: 0,
     }
     //window.addEventListener(
       //"mousemove",
@@ -80,32 +82,75 @@ class App extends Component {
         }}>
           {
             ({h, x_off, y_off}) => {
+              const maxAngle = 20
+
               const xp = progress(x_off_prev, x_off_dest, x_off)
               const yp = progress(y_off_prev, y_off_dest, y_off)
-
               const distance = xp
 
+              const goingDown = y_off > y_off_prev
+              const goingRight = x_off > x_off_prev
+
+
+              //debugger;
+
               const p = parabola(distance)
+
+              // TODO: scale maxAngle based on width:height ratio of the object being transformed
+              const rotateX = (goingDown ? -1 : 1) * scale(0, maxAngle * 1.5, p)
+              const rotateY = (goingRight ? 1 : -1) * scale(0, maxAngle * 2, p)
+
               const height = scale(3, 30, p)
-              const transform = `translateZ(${scale(0, 100, p)}px)`
+              const transforms = [
+               `translateZ(${scale(0, 100, p)}px)`,
+               //`rotateX(${scale(maxAngle, 0, xp)}deg)`,
+               //`rotateY(${scale(maxAngle, 0, yp)}deg)`,
+               `rotateX(${rotateX}deg)`,
+               `rotateY(${rotateY}deg)`,
+              ]
+
+              const saturation = 81 + rotateX * 1
+              const lightness = 65 + rotateX * 2
+
+              const transform = transforms.join(' ')
+              const background = `hsl(225, ${saturation}%, ${lightness}%)`
               //console.log(x_off, x_off_dest, distance, p, height)
 
-              return <Paper c="butt" h={height} style={{
+              return <Paper h={height} style={{
                 top: y_off,
                 left: x_off,
                 transform,
+                background,
+                width: 100,
+                height: 100,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                marginTop: '30px',
               }}>
-                <label>Perspective
-                  <input type="range" min="0" max="3000" value={this.state.perspective} onChange={this.onPerspectiveChange.bind(this)} />
-                </label>
-                <button onClick={() => this.setState({perspective: 500})}>reset</button>
-                current: {this.state.perspective}px
               </Paper>
             }
           }
         </Motion>
     </div>
     );
+  }
+
+  renderForm() {
+    return (
+      <div>
+      <label>Perspective
+        <input type="range" min="0" max="3000" value={this.state.perspective} onChange={this.onPerspectiveChange.bind(this)} />
+      </label>
+      <label>x ang: {this.state.x_ang}
+        <input type="range" min="-10" max="10" value={this.state.x_ang} onChange={e => this.setState({x_ang: e.target.value})} />
+      </label>
+      <label>y ang: {this.state.y_ang}
+        <input type="range" min="-10" max="10" value={this.state.y_ang} onChange={e => this.setState({y_ang: e.target.value})} />
+      </label>
+      <button onClick={() => this.setState({perspective: 500, x_ang: 0, y_ang: 0})}>reset</button>
+      current: {this.state.perspective}px
+      </div>
+    )
   }
 }
 
@@ -122,7 +167,7 @@ const scale = (min, max, ratio) => ((max - min) * between(0, 1, ratio)) + min
 const parabola = (x) => -x * (x - 1)
 const xr = x => x / window.innerWidth
 const yr = y => y / window.innerHeight
-const offset = n => scale(-100, 100, n)
+const offset = n => scale(-500, 500, n)
 const range = (num) => {
   const r = []
   for (let i = 0; i < num; i++) r.push(i)
