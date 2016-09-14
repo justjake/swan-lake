@@ -26,6 +26,8 @@ class App extends Component {
     this.setState({
       x: e.clientX,
       y: e.clientY,
+      prev_x: this.state.x,
+      prev_y: this.state.y,
     })
     console.log(this.state)
   }
@@ -35,8 +37,11 @@ class App extends Component {
       flexGrow: 1,
     }
 
-    const xr = this.state.x / window.innerWidth
-    const yr = this.state.y / window.innerHeight
+    const x_off_dest = offset(xr(this.state.x))
+    const y_off_dest = offset(yr(this.state.y))
+
+    const x_off_prev = offset(xr(this.state.prev_x))
+    const y_off_prev = offset(yr(this.state.prev_y))
 
     return (
       <div>
@@ -48,14 +53,31 @@ class App extends Component {
 
         <Motion style={{
           h: spring( scale(1, 10, this.state.y / window.innerHeight)),
-          x_off: wob(scale(-50, 50, xr)),
-          y_off: wob(scale(-50, 50, yr)),
+          x_off: wob(x_off_dest),
+          y_off: wob(y_off_dest),
         }}>
           {
-            ({h, x_off, y_off}) => <Paper c="butt" h={h} style={{
-              top: y_off,
-              left: x_off,
-            }} />
+            ({h, x_off, y_off}) => {
+              const xp = progress(x_off_prev, x_off_dest, x_off)
+              const yp = progress(y_off_prev, y_off_dest, y_off)
+
+              const distance = (xp + yp) / 2
+
+              const p = parabola(distance)
+              const height = scale(1, 10, p)
+              console.log(x_off, x_off_dest, distance, p, height)
+
+              return <Paper c="butt" h={height} style={{
+                top: y_off,
+                left: x_off,
+              }}>
+              x: {x_off_dest} <br/>
+                curr_x: {x_off}<br/>
+
+                distance: {distance}<br/>
+
+              </Paper>
+            }
           }
         </Motion>
     </div>
@@ -63,8 +85,13 @@ class App extends Component {
   }
 }
 
+const progress = (prev, next, cur) => (cur - prev) / (next - prev)
 const between = (min, max, value) => Math.max(Math.min(max, value), min)
 const scale = (min, max, ratio) => ((max - min) * between(0, 1, ratio)) + min
+const parabola = (x) => -x * (x - 1)
+const xr = x => x / window.innerWidth
+const yr = y => y / window.innerHeight
+const offset = n => scale(-100, 100, n)
 const range = (num) => {
   const r = []
   for (let i = 0; i < num; i++) r.push(i)
