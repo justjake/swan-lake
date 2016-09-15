@@ -20,6 +20,8 @@ class App extends Component {
       perspective: 500,
       x_ang: 0,
       y_ang: 0,
+      stiffness: 70,  // presets.wobbly.stiffness,
+      damping: 8 // presets.wobbly.damping,
     }
     //window.addEventListener(
       //"mousemove",
@@ -56,6 +58,18 @@ class App extends Component {
     })
   }
 
+  renderStuff() {
+    return (
+      <Paper c="butt" h={10}>
+        { range(11).map(h => <Paper h={h} useStatic={this.state.show}/>) }
+      </Paper>
+    )
+  }
+
+  spring(v) {
+    return spring(v, { damping: this.state.damping, stiffness: this.state.stiffness })
+  }
+
   render() {
     const style = {
       flexGrow: 1,
@@ -69,16 +83,22 @@ class App extends Component {
 
     return (
       <div style={{perspective: this.state.perspective}}>
-        <Paper c="butt" h={10}>
-          {
-            range(11).map(h => <Paper h={h} useStatic={this.state.show}/>)
-          }
+        <Paper c="butt">
+          <Paper h={1} transparent grow col>
+            { this.renderSlider('damping', 0, 200) }
+            { this.renderSlider('stiffness', 0, 200) }
+          </Paper>
+          <Paper h={1} transparent grow col>
+            <pre>
+              { JSON.stringify(this.state, null, '  ') }
+            </pre>
+          </Paper>
         </Paper>
 
         <Motion style={{
           h: spring( scale(1, 10, this.state.y / window.innerHeight)),
-          x_off: wob(x_off_dest),
-          y_off: wob(y_off_dest),
+          x_off: this.spring(x_off_dest),
+          y_off: this.spring(y_off_dest),
         }}>
           {
             ({h, x_off, y_off}) => {
@@ -100,9 +120,9 @@ class App extends Component {
               const rotateX = (goingDown ? -1 : 1) * scale(0, maxAngle * 1.5, p)
               const rotateY = (goingRight ? 1 : -1) * scale(0, maxAngle * 2, p)
 
-              const height = scale(3, 30, p)
+              const height = scale(3, 50, p)
               const transforms = [
-               `translateZ(${scale(0, 100, p)}px)`,
+               `translateZ(${scale(0, 400, p)}px)`,
                //`rotateX(${scale(maxAngle, 0, xp)}deg)`,
                //`rotateY(${scale(maxAngle, 0, yp)}deg)`,
                `rotateX(${rotateX}deg)`,
@@ -127,12 +147,33 @@ class App extends Component {
                 marginRight: 'auto',
                 marginTop: '30px',
               }}>
+              <img src={logo} />
               </Paper>
             }
           }
         </Motion>
     </div>
     );
+  }
+
+  renderSlider(stateName, min, max) {
+    const onChange = e => this.setState({[stateName]: e.target.value})
+    return <label>
+      {stateName}: &nbsp;
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={this.state[stateName]}
+        onChange={onChange}
+      />
+      <input
+        type="number"
+        value={this.state[stateName]}
+        onChange={onChange}
+        style={{width: '4em'}}
+      />
+    </label>
   }
 
   renderForm() {
@@ -175,19 +216,44 @@ const range = (num) => {
 }
 const wob = (v) => spring(v, presets.wobbly)
 
-const Paper = ({children, className, style, height, useStatic, h, c} = {height: 5, useStatic: true}) => {
-  const c_ = className || c
+const Paper = ({
+  children,
+
+  // style
+  height = 5, h,
+  className, c,
+  style,
+  transparent,
+  disableStaticLight,
+
+  // flexbox layout
+  col,
+  reverse,
+  grow,
+} = {}) => {
+  const c_ = c || className
   const h_ = between(1, 50, h || height)
 
   const yOffset = scale(0, 20, h_ / 10)
   const spread = scale(0.5, 2, h_ / 10)
-  const darkness = scale(0.2, 0.6, h_ / 10)
-  const staticDarkness = scale(0.2, 0.05, h_ / 10)
+  const darkness = scale(0.2, 0.6, h_ / 10) * (transparent ? 0.3 : 1)
+  const staticDarkness = scale(0.2, 0.05, h_ / 10) * (transparent ? 0.3 : 1)
 
   const keyShadow = `0px ${yOffset}px ${spread}em rgba(0, 0, 0, ${darkness})`
   const staticShadow = `0px 2px 5px rgba(0, 0, 0, ${staticDarkness})`
-  const shadow = useStatic ? [keyShadow, staticShadow].join(', ') : keyShadow
-  const style_ = Object.assign({ boxShadow: shadow }, style)
+  const boxShadow = disableStaticLight ?  keyShadow : [keyShadow, staticShadow].join(', ')
+
+  let flexDirection = col ? 'column' : 'row'
+  if (reverse) flexDirection += '-reverse'
+
+  const style_ = Object.assign({
+    boxShadow,
+    flexDirection,
+    flexGrow: grow === true ? 1 : grow,
+    background: transparent ? 'transparent': null,
+  }, style)
+
+  console.log(style_)
 
   return (
     <div className={classNames(c_, 'paper')} style={style_}>
@@ -195,6 +261,8 @@ const Paper = ({children, className, style, height, useStatic, h, c} = {height: 
     </div>
   )
 }
+
+
 
 
 const Guy = (props) => {

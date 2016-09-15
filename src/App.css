@@ -10,13 +10,14 @@ html {
 
 .paper {
   background: #fff;
-  box-shadow: 0px 2px 2em rgba(0, 0, 0, 0.5);
   border-radius: 3px;
   padding: 1em;
   display: flex;
   justify-content: space-around;
   margin: 1em;
   position: relative;
+
+  color: #333;
 }
 
 .target {
