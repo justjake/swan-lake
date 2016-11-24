@@ -17,12 +17,13 @@ class App extends Component {
       show: false,
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
+      prev_x: window.innerWidth / 2,
+      prev_y: window.innerHeight / 2,
       perspective: 500,
-      x_ang: 0,
-      y_ang: 0,
       stiffness: 70,  // presets.wobbly.stiffness,
       damping: 8 // presets.wobbly.damping,
     }
+    this.prev_pos = {x: this.state.x, y: this.state.y}
     //window.addEventListener(
       //"mousemove",
       //_.debounce(this.onMM.bind(this), 70)
@@ -38,16 +39,6 @@ class App extends Component {
     })
   }
 
-  onMM(e) {
-    this.setState({
-      x: e.clientX,
-      y: e.clientY,
-      prev_x: this.state.x,
-      prev_y: this.state.y,
-    })
-    console.log(this.state)
-  }
-
   onClick(e) {
     this.setState({
       show: !this.state.show,
@@ -60,7 +51,7 @@ class App extends Component {
 
   renderStuff() {
     return (
-      <Paper c="butt" h={10}>
+      <Paper c="butt" h={2}>
         { range(11).map(h => <Paper h={h} useStatic={this.state.show}/>) }
       </Paper>
     )
@@ -75,15 +66,18 @@ class App extends Component {
       flexGrow: 1,
     }
 
-    const x_off_dest = offset(xr(this.state.x))
-    const y_off_dest = offset(yr(this.state.y))
+    const size = 100
 
-    const x_off_prev = offset(xr(this.state.prev_x))
-    const y_off_prev = offset(yr(this.state.prev_y))
+    const uncenter = (point, width) => ({
+      x: point.x - width / 2,
+      y: point.y - width / 2})
+
+    const dest = uncenter({x: this.state.x, y: this.state.y}, size);
+    const prev_dest = uncenter({x: this.state.prev_x, y: this.state.prev_y}, size);
 
     return (
       <div style={{perspective: this.state.perspective}}>
-        <Paper c="butt">
+        <Paper c="butt" h={2}>
           <Paper h={1} transparent grow col>
             { this.renderSlider('damping', 0, 200) }
             { this.renderSlider('stiffness', 0, 200) }
@@ -96,56 +90,57 @@ class App extends Component {
         </Paper>
 
         <Motion style={{
-          h: spring( scale(1, 10, this.state.y / window.innerHeight)),
-          x_off: this.spring(x_off_dest),
-          y_off: this.spring(y_off_dest),
+          x: this.spring(dest.x),
+          y: this.spring(dest.y),
         }}>
           {
-            ({h, x_off, y_off}) => {
-              const maxAngle = 20
+            ({x, y}) => {
+              const maxAngle = 50
 
-              const xp = progress(x_off_prev, x_off_dest, x_off)
-              const yp = progress(y_off_prev, y_off_dest, y_off)
-              const distance = xp
+              const pos = {x, y}
+              const prog = pointwise(progress)(prev_dest, dest, pos)
+              const directions = {
+                x: pos.x >= this.prev_pos.x ? 1 : -1,
+                y: pos.y >= this.prev_pos.y ? 1 : -1,
+              }
 
-              const goingDown = y_off > y_off_prev
-              const goingRight = x_off > x_off_prev
-
-
-              //debugger;
-
-              const p = parabola(distance)
+              const arc = pointwise(parabola)(prog)
 
               // TODO: scale maxAngle based on width:height ratio of the object being transformed
-              const rotateX = (goingDown ? -1 : 1) * scale(0, maxAngle * 1.5, p)
-              const rotateY = (goingRight ? 1 : -1) * scale(0, maxAngle * 2, p)
 
-              const height = scale(3, 50, p)
+              const rotateX = (directions.y * -1) * scale(0, maxAngle, arc.y)
+              //const rotateY = directions.x * scale(0, maxAngle * 2, arc.y)
+
+              const height = scale(3, 50, magnitude(arc))
               const transforms = [
-               `translateZ(${scale(0, 400, p)}px)`,
+               //`translateZ(${scale(0, 400, magnitude(arc))}px)`,
                //`rotateX(${scale(maxAngle, 0, xp)}deg)`,
                //`rotateY(${scale(maxAngle, 0, yp)}deg)`,
                `rotateX(${rotateX}deg)`,
-               `rotateY(${rotateY}deg)`,
+               //`rotateY(${rotateY}deg)`,
               ]
 
-              const saturation = 81 + rotateX * 1
+              const saturation = 81;
               const lightness = 65 + rotateX * 2
 
               const transform = transforms.join(' ')
               const background = `hsl(225, ${saturation}%, ${lightness}%)`
               //console.log(x_off, x_off_dest, distance, p, height)
 
+              this.prev_pos = pos
+
+              // console.log({prev_dest, dest, pos, prog, directions, arc})
+              console.log(transform, arc, prog)
+
               return <Paper h={height} style={{
-                top: y_off,
-                left: x_off,
+                position: 'fixed',
+                top: y,
+                left: x,
                 transform,
                 background,
-                width: 100,
-                height: 100,
-                marginLeft: 'auto',
-                marginRight: 'auto',
-                marginTop: '30px',
+                width: size,
+                height: size,
+                margin: 0,
               }}>
               <img src={logo} />
               </Paper>
@@ -196,7 +191,16 @@ class App extends Component {
 }
 
 // returns the progress ratio of a value transitioning between a previous and next value
-const progress = (prev, next, cur) => (cur - prev) / (next - prev)
+const progress = (prev, next, cur) => {
+  const r = (cur - prev) / (next - prev)
+
+  // overshoot ? or should we not do this
+  if (r > 1) {
+    return 1 - r % 1
+  }
+
+  return r
+}
 
 // constrains a value between a min and a max
 const between = (min, max, value) => Math.max(Math.min(max, value), min)
@@ -206,6 +210,17 @@ const scale = (min, max, ratio) => ((max - min) * between(0, 1, ratio)) + min
 
 // transforms a ratio to scale in a parabola, from 0, max at 0.5, to 1
 const parabola = (x) => -x * (x - 1)
+
+// returns a function that performs an operation on a point
+const pointwise = f => (...points)=> (
+  {
+    x: f(...points.map(p => p.x)),
+    y: f(...points.map(p => p.y)),
+  }
+)
+
+const magnitude = p => Math.sqrt(p.x * p.y)
+
 const xr = x => x / window.innerWidth
 const yr = y => y / window.innerHeight
 const offset = n => scale(-500, 500, n)
@@ -253,7 +268,7 @@ const Paper = ({
     background: transparent ? 'transparent': null,
   }, style)
 
-  console.log(style_)
+  //console.log(style_)
 
   return (
     <div className={classNames(c_, 'paper')} style={style_}>
@@ -261,8 +276,6 @@ const Paper = ({
     </div>
   )
 }
-
-
 
 
 const Guy = (props) => {
