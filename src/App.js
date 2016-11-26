@@ -31,17 +31,25 @@ class App extends Component {
   }
 
   depthToBlur(depth) {
+    // return '0px';
     return scale(0, 6, progress(128, -48, depth)) + 'px'
   }
 
   renderRibbon(mz, hz) {
     const styles = {
       position: 'absolute',
-      background: 'red',
+      background: 'transparent',
+      overflow: 'hidden',
     };
 
     // can't make a ribbon yet?
     if (!this.content || !this.header) {
+      // we need all the layout to happen once, so we can grab DOM coordinates
+      // off of our elements.
+      //
+      // So, bide our time for once cycle, then re-render.
+      // This should probably be moved into compontentDidMount!
+      this.forceUpdate();
       return <div style={styles} />
     }
 
@@ -72,7 +80,34 @@ class App extends Component {
       translateZ: ribbonZ + 'px',
       rotateY: angle + 'rad'
     })
-    return <div style={styles} />
+
+    const itemOffset = offsetFrom(this.item, this.content.parentNode)
+    const menuItemTop = itemOffset.top;
+    const menuItemBottom = itemOffset.top + this.item.offsetHeight;
+    const menuItemHeight = this.item.offsetHeight;
+
+    return (
+      <div style={styles}>
+        { this.renderTriDeux({
+          top: menuItemTop,
+          middle: menuItemHeight,
+          bottom: this.content.offsetHeight - menuItemBottom,
+          width: neededWidth,
+        }) }
+      </div>
+    )
+  }
+
+  renderTriDeux({top, middle, bottom, width}) {
+    const style = {
+      borderTop: `${top}px solid transparent`,
+      borderBottom: `${bottom}px solid transparent`,
+      borderRight: `${width}px solid #878787`,
+      height: top + middle + bottom,
+    }
+
+    this.latestTri = <div className="tri" style={style} />;
+    return this.latestTri
   }
 
   render() {
@@ -89,19 +124,27 @@ class App extends Component {
       <div style={{
         perspective: 1100,
       }}>
-          <Motion style={{
-            hz: spring(hz),
-            mz: spring(mz),
-          }}>{
+      <Motion
+        style={{
+          hz: spring(hz),
+          mz: spring(mz),
+        }}
+        defaultStyle={{ hz, mz }}
+      >{
             ({hz, mz}) => {
             return (
-              <Paper transparent>
-
+              //<div style={{
+                //display: 'flex',
+                  //flexDirection: 'row',
+                  //margin: '3em 3em'
+              //}}>
+              <Paper transparent invisible>
                 <section
                   className="header"
                   style={{
                     transform: tsfm({ translateZ: hz + 'px', }),
-                      filter: tsfm({blur: this.depthToBlur(hz)})
+                      filter: tsfm({blur: this.depthToBlur(hz)}),
+                      //flexGrow: 1,
                   }}
                   onMouseEnter={() => this.setState({focusContent: false})}
                   onMouseLeave={() => this.setState({focusContent: true})}
@@ -116,7 +159,9 @@ class App extends Component {
                     <li style={{
                       color: c_bright,
                       background: b_dark,
-                    }}>
+                    }}
+                    ref={(e) => this.item = e}
+                  >
                       post 4
                     </li>
                     { [5].map(i => <li key={i}>post {i}</li>) }
@@ -130,6 +175,7 @@ class App extends Component {
                   style={{
                     transform: tsfm({translateZ: mz + 'px'}),
                     filter: tsfm({blur: this.depthToBlur(mz)}),
+                    //flexGrow: 1,
                   }}
                   ref={e => (this.content = e)}
                 >
@@ -138,6 +184,7 @@ class App extends Component {
                   <Ipsum />
                   <Ipsum />
                   <Ipsum />
+
                 </section>
 
               </Paper>
@@ -155,6 +202,20 @@ const Test3d = (style = {}) => {
   )
 }
 
+// Find offset of DOM element child inside some DOM element parent
+// returns {top, left}
+const offsetFrom = (child, parent) => {
+  const parentRect = parent.getBoundingClientRect();
+  const childRect = child.getBoundingClientRect();
+
+  return {
+    // see this fudge factor here?
+    // our ribbon triangle was about 15px off, so we shave those off here.
+    // no need to be salty
+    top: childRect.top - parentRect.top - 15,
+    left: childRect.left - parentRect.left,
+  }
+}
 
 // returns the progress ratio of a value transitioning between a previous and next value
 const progress = (prev, next, cur) => {
@@ -205,6 +266,7 @@ const Paper = ({
   className, c,
   style,
   transparent,
+  invisible,
   disableStaticLight,
 
   // flexbox layout
@@ -228,7 +290,7 @@ const Paper = ({
   if (reverse) flexDirection += '-reverse'
 
   const style_ = Object.assign({
-    boxShadow,
+    boxShadow: invisible ? '' : boxShadow,
     flexDirection,
     flexGrow: grow === true ? 1 : grow,
     background: transparent ? 'transparent': null,
@@ -241,6 +303,9 @@ const Paper = ({
       { children }
     </div>
   )
+}
+
+const Trapezoid = (props) => {
 }
 
 
