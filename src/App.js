@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { Motion, spring, presets } from 'react-motion'
 import classNames from 'classnames';
 import _ from 'lodash';
-import lorem from 'lorem-ipsum';
+import loremRandom from 'lorem-ipsum';
 
 window.spring = spring
 
@@ -14,75 +14,125 @@ const c_dark = '#e89371'
 const c_bright = '#ff7d49'
 const b_dark = '#9b9895'
 
+const lorems = [ loremRandom({ count: 5 }) ]
+
 class App extends Component {
   constructor(props) {
     super(props);
+    this.state = {
+      focusContent: true,
+    }
   }
+
+  depthToBlur(depth) {
+    return scale(0, 6, progress(128, -48, depth)) + 'px'
+  }
+
+  renderRibbon(mz, hz) {
+    const styles = {
+      position: 'absolute',
+      background: 'red',
+    };
+
+    // can't make a ribbon yet?
+    if (!this.content || !this.header) {
+      return <div style={styles} />
+    }
+
+    const height = 55;
+
+    const leftEdge = this.header.offsetLeft + this.header.offsetWidth;
+    const dist = this.content.offsetLeft - leftEdge;
+    // thanls to nora for simplifying
+    const angle = Math.atan((mz - hz) / dist);
+    const ribbonZ = (mz + hz) / 2
+
+    // TODO: calculate from selected item
+    styles.top = (this.header.offsetTop + this.content.offsetTop) / 2;
+    // TODO: make height of selected item
+    styles.height = height;
+
+    styles.left = (this.header.offsetLeft + this.header.offsetWidth);
+    // will need to re-set this based on calculated desired hypotenuse.
+    styles.width = this.content.offsetLeft - styles.left
+    styles.transform = tsfm({
+      translateZ: ribbonZ + 'px',
+      rotateY: angle + 'rad'
+    })
+    return <div style={styles} />
+  }
+
   render() {
+    const focusZ = 128;
+    const unfocusZ = -48;
+
+    const { focusContent } = this.state;
+
+    const hz = focusContent ? unfocusZ : focusZ;
+    const mz = focusContent ? focusZ : unfocusZ;
+    const onToggleClicked = () => this.setState({focusContent: !this.state.focusContent})
+
     return (
       <div style={{
         perspective: 1100,
       }}>
-        <Paper transparent>
+          <Motion style={{
+            hz: spring(hz),
+            mz: spring(mz),
+          }}>{
+            ({hz, mz}) => {
+            return (
+              <Paper transparent>
 
-          <Paper grow={1} style={{
-            padding: 0,
-              background: '#555',
-              color: '#e89371',
-          }}>
-          <section className="header">
-            <h1>My Website</h1>
-            <ul className="nav">
-              { [1, 2, 3].map(i => <li key={i}>post {i}</li>) }
-              <li style={{
-                color: c_bright,
-                background: b_dark,
-              }}>
-                post 4
-              </li>
-              { [5].map(i => <li key={i}>post {i}</li>) }
-            </ul>
-          </section>
-        </Paper>
+                <section
+                  className="header"
+                  style={{
+                    transform: tsfm({ translateZ: hz + 'px', }),
+                      filter: tsfm({blur: this.depthToBlur(hz)})
+                  }}
+                  onMouseEnter={() => this.setState({focusContent: false})}
+                  onMouseLeave={() => this.setState({focusContent: true})}
+                  ref={e => (this.header = e)}
+                >
+                  <h1>My Website</h1>
+                  <div style={{padding: '0 10px'}}>
+                    <Ipsum />
+                  </div>
+                  <ul className="nav">
+                    { [1, 2, 3].map(i => <li key={i}>post {i}</li>) }
+                    <li style={{
+                      color: c_bright,
+                      background: b_dark,
+                    }}>
+                      post 4
+                    </li>
+                    { [5].map(i => <li key={i}>post {i}</li>) }
+                  </ul>
+                </section>
 
-        <div style={{width: 80, flexGrow: 0,}} />
+                { this.renderRibbon(mz, hz) }
 
-        <Paper grow={4}>
-          <section style={{maxWidth: 700}}>
-          <h1>My post</h1>
-          <Ipsum />
-          <Ipsum />
-          <Ipsum />
-          <Ipsum />
-          <div style={{
-            transform: 'blur(6px)',
-            background: '#eee',
-            height: '200px',
-            overflow: 'hidden',
-              opacity: 0.99,
-          }}>
-            <Test3d
-              top="100"
-              left="100"
-            />
-            <Test3d
-              top="350"
-              left="100"
-              filter="blur(2px)"
-            />
-            <Test3d
-              top="600"
-              left="100"
-              filter="blur(7px)"
-            />
-          </div>
-          </section>
-        </Paper>
+                <section
+                  className="content"
+                  style={{
+                    transform: tsfm({translateZ: mz + 'px'}),
+                    filter: tsfm({blur: this.depthToBlur(mz)}),
+                  }}
+                  ref={e => (this.content = e)}
+                >
+                  <h1>My post</h1>
+                  <Ipsum />
+                  <Ipsum />
+                  <Ipsum />
+                  <Ipsum />
+                </section>
 
-      </Paper>
-
+              </Paper>
+            )
+            }
+          }</Motion>
       </div>
-    )
+    );
   }
 }
 
@@ -192,11 +242,16 @@ const Guy = (props) => {
 const Ipsum = (props) => {
   return (
   <p>
-    { lorem({count: 5}) }
+    { lorems[0] }
   </p>
   )
 }
 
-const tsfm = (props = {}) => Object.keys(props).map(k => props[k])
+const tsfm = (props = {}) => Object.keys(props)
+  .map(k => `${k}(${props[k]})`)
+  .join(' ')
+
+window.tsfm = tsfm;
+
 
 export default App;
