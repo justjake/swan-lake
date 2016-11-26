@@ -6,6 +6,12 @@ import loremRandom from 'lorem-ipsum';
 
 window.spring = spring
 
+// TODO: integrate Photon, a CSS3 lighting library
+// http://photon.attasi.com/docs.html
+//
+// TODO: read over this stuff:
+// http://oridomi.com/#
+
 // this is wat
 import logo from './logo.svg';
 import './App.css';
@@ -44,17 +50,24 @@ class App extends Component {
     const leftEdge = this.header.offsetLeft + this.header.offsetWidth;
     const dist = this.content.offsetLeft - leftEdge;
     // thanls to nora for simplifying
-    const angle = Math.atan((mz - hz) / dist);
+    const opposite = mz - hz;
+    const adjacent = dist
+    const angle = -1 * Math.atan(opposite / adjacent);
     const ribbonZ = (mz + hz) / 2
+    const neededWidth = Math.sqrt(
+      opposite * opposite + adjacent * adjacent
+    )
 
     // TODO: calculate from selected item
-    styles.top = (this.header.offsetTop + this.content.offsetTop) / 2;
+    styles.top = this.header.offsetTop;
     // TODO: make height of selected item
-    styles.height = height;
+    styles.height = this.header.offsetHeight;
 
-    styles.left = (this.header.offsetLeft + this.header.offsetWidth);
+    const moveBack = (neededWidth - dist) / 2;
+
+    styles.left = (this.header.offsetLeft + this.header.offsetWidth) - moveBack;
     // will need to re-set this based on calculated desired hypotenuse.
-    styles.width = this.content.offsetLeft - styles.left
+    styles.width = neededWidth
     styles.transform = tsfm({
       translateZ: ribbonZ + 'px',
       rotateY: angle + 'rad'
@@ -255,3 +268,4 @@ window.tsfm = tsfm;
 
 
 export default App;
+
