@@ -148,6 +148,7 @@ class App extends Component {
                   flexDirection: 'row',
                   margin: '3em 3em',
                   position: 'relative',
+                  justifyContent: 'center',
                 }}
               >
                 { this.renderRibbon(mz, hz) }
@@ -156,7 +157,11 @@ class App extends Component {
                   className="header"
                   style={{
                     transform: tsfm({ translateZ: hz + 'px', }),
-                      filter: tsfm({blur: this.depthToBlur(hz)}),
+                    filter: tsfm({blur: this.depthToBlur(hz)}),
+                    maxWidth: '256px',
+                    // don't stretch to container height, just use content
+                    // height.
+                    alignSelf: 'flex-start',
                       //flexGrow: 1,
                   }}
                   onMouseEnter={() => this.setState({focusContent: false})}
@@ -196,11 +201,13 @@ class App extends Component {
                   style={{
                     transform: tsfm({translateZ: mz + 'px'}),
                     filter: tsfm({blur: this.depthToBlur(mz)}),
+                    maxWidth: 512 + 256 + 'px',
                     //flexGrow: 1,
                   }}
                   ref={e => (this.content = e)}
                 >
                   <h1>My post</h1>
+                  <img src="http://2.gravatar.com/avatar/eff26034f6349f400f0fd0bc1f06c1af?size=512p" alt="Jake Teton-Landis" />
                   <Ipsum />
                   <Ipsum />
                   <Ipsum />
