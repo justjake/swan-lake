@@ -22,6 +22,9 @@ const b_dark = '#9b9895'
 
 const lorems = [ loremRandom({ count: 5 }) ]
 
+const DISABLE_TRANFORM = false;
+const MAX_BLUR = 6;
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -40,7 +43,12 @@ class App extends Component {
       position: 'absolute',
       background: 'transparent',
       overflow: 'hidden',
+      top: 0,
+      bottom: 0,
     };
+
+    // TODO: subtract blur factor from content/header position and dimensions
+    // as apropriate
 
     // can't make a ribbon yet?
     if (!this.content || !this.header) {
@@ -53,29 +61,30 @@ class App extends Component {
       return <div style={styles} />
     }
 
-    const height = 55;
-
     const leftEdge = this.header.offsetLeft + this.header.offsetWidth;
     const dist = this.content.offsetLeft - leftEdge;
-    // thanls to nora for simplifying
+
+    // calculate the angle of the ribbon div from the header to the content
     const opposite = mz - hz;
     const adjacent = dist
     const angle = -1 * Math.atan(opposite / adjacent);
-    const ribbonZ = (mz + hz) / 2
+
+    // calculate the hypotenuse size of the ribbon to perfectly touch both
+    // content and header
     const neededWidth = Math.sqrt(
       opposite * opposite + adjacent * adjacent
     )
 
-    // TODO: calculate from selected item
-    styles.top = this.header.offsetTop;
-    // TODO: make height of selected item
-    styles.height = this.header.offsetHeight;
+    // position ribbon Z half-way between the two, because rotation is applied
+    // from the element's center.
+    const ribbonZ = (mz + hz) / 2
 
+    // keep the ribbon centered in its space, even as it grows
     const moveBack = (neededWidth - dist) / 2;
-
     styles.left = (this.header.offsetLeft + this.header.offsetWidth) - moveBack;
-    // will need to re-set this based on calculated desired hypotenuse.
+
     styles.width = neededWidth
+
     styles.transform = tsfm({
       translateZ: ribbonZ + 'px',
       rotateY: angle + 'rad'
@@ -133,12 +142,16 @@ class App extends Component {
       >{
             ({hz, mz}) => {
             return (
-              //<div style={{
-                //display: 'flex',
-                  //flexDirection: 'row',
-                  //margin: '3em 3em'
-              //}}>
-              <Paper transparent invisible>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  margin: '3em 3em',
+                  position: 'relative',
+                }}
+              >
+                { this.renderRibbon(mz, hz) }
+
                 <section
                   className="header"
                   style={{
@@ -168,7 +181,15 @@ class App extends Component {
                   </ul>
                 </section>
 
-                { this.renderRibbon(mz, hz) }
+
+                <div className="gutter gutter-item" style={{
+                  width: 30,
+                  //background: 'blue',
+                }} />
+                <div className="gutter gutter-ribbon" style={{
+                  width: '10%',
+                  //background: 'red',
+                }} />
 
                 <section
                   className="content"
@@ -187,7 +208,7 @@ class App extends Component {
 
                 </section>
 
-              </Paper>
+              </div>
             )
             }
           }</Motion>
@@ -202,6 +223,21 @@ const Test3d = (style = {}) => {
   )
 }
 
+const offsetFromLoop = (child, parent) => {
+  let top = 0;
+  let left = 0;
+
+  if (child.offsetParent) {
+    do {
+      top += child.offsetTop;
+      left += child.offsetLeft;
+      child = child.offsetParent;
+    } while (child && child != parent)
+  }
+
+  return {top, left};
+}
+
 // Find offset of DOM element child inside some DOM element parent
 // returns {top, left}
 const offsetFrom = (child, parent) => {
@@ -212,7 +248,7 @@ const offsetFrom = (child, parent) => {
     // see this fudge factor here?
     // our ribbon triangle was about 15px off, so we shave those off here.
     // no need to be salty
-    top: childRect.top - parentRect.top - 15,
+    top: childRect.top - parentRect.top,
     left: childRect.left - parentRect.left,
   }
 }
@@ -325,7 +361,7 @@ const Ipsum = (props) => {
   )
 }
 
-const tsfm = (props = {}) => Object.keys(props)
+const tsfm = (props = {}) => DISABLE_TRANFORM ? '' : Object.keys(props)
   .map(k => `${k}(${props[k]})`)
   .join(' ')
 
